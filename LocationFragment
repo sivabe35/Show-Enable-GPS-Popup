@@ -1,0 +1,66 @@
+    /**
+     * Check if GPS enabled or not
+     * and request dialog to enable GPS.
+     */
+    private void checkWhetherLocationSettingsAreSatisfied() {
+
+        LocationRequest mLocationRequest = LocationRequest.create()
+                .setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY)
+                .setInterval(1000)
+                .setNumUpdates(2);
+
+        final LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder().addLocationRequest(mLocationRequest);
+        builder.setAlwaysShow(true);
+        builder.setNeedBle(true);
+        SettingsClient client = LocationServices.getSettingsClient(mContext);
+        Task<LocationSettingsResponse> task = client.checkLocationSettings(builder.build());
+        task.addOnSuccessListener(fragmentActivity, new OnSuccessListener<LocationSettingsResponse>() {
+            @Override
+            public void onSuccess(LocationSettingsResponse locationSettingsResponse) {
+                Log.d(TAG, "onSuccess() called with: locationSettingsResponse = [" + locationSettingsResponse + "]");
+                hasLocationPermission();
+            }
+        });
+        task.addOnFailureListener(fragmentActivity, new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception e) {
+
+                Log.d(TAG, "onFailure() called with: e = [" + e + "]");
+                if (e instanceof ResolvableApiException) {
+                    // Location settings are not satisfied, but this can be fixed
+                    // by showing the user a dialog.
+                    try {
+                        //Activity -  Show the dialog by calling startResolutionForResult(),
+                        // and check the result in onActivityResult().
+                        ResolvableApiException resolvable = (ResolvableApiException) e;
+//                        resolvable.startResolutionForResult(fragmentActivity,
+//                                Constants.REQUEST_CHECK_SETTINGS);
+
+//Fragment - call startIntentSenderForResult to receive result in onActivityResult
+                        startIntentSenderForResult(resolvable.getResolution().getIntentSender(),Constants.REQUEST_CHECK_SETTINGS,null,0,0,0,null);
+                    } catch (IntentSender.SendIntentException sendEx) {
+                        // Ignore the error.
+                        sendEx.printStackTrace();
+                    }
+                }
+
+            }
+        });
+    }
+
+
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == Constants.REQUEST_CHECK_SETTINGS) {
+            // Make sure the request was successful
+            if (resultCode == RESULT_OK) {
+                hasLocationPermission();
+            } else {
+                getLastLocation();
+            }
+        }
+
+    }
